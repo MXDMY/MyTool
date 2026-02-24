@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>949</width>
+    <width>1114</width>
     <height>630</height>
    </rect>
   </property>
@@ -28,7 +28,7 @@
         <widget class="QListView" name="ble_dev_view"/>
        </item>
        <item>
-        <layout class="QVBoxLayout" name="verticalLayout_2" stretch="5,2,1">
+        <layout class="QVBoxLayout" name="verticalLayout_2" stretch="5,2,2">
          <item>
           <widget class="QTreeView" name="ble_serv_view"/>
          </item>
@@ -42,11 +42,11 @@
              <rect>
               <x>0</x>
               <y>0</y>
-              <width>704</width>
-              <height>157</height>
+              <width>836</width>
+              <height>176</height>
              </rect>
             </property>
-            <layout class="QHBoxLayout" name="horizontalLayout_2">
+            <layout class="QHBoxLayout" name="horizontalLayout_2" stretch="1,1">
              <item>
               <widget class="QFrame" name="info_frame">
                <property name="frameShape">
@@ -57,35 +57,28 @@
                </property>
                <layout class="QVBoxLayout" name="verticalLayout_3">
                 <item>
-                 <widget class="QLabel" name="addr_uuid">
+                 <widget class="QLabel" name="addr_uuid_label">
                   <property name="text">
                    <string>addr_uuid</string>
                   </property>
                  </widget>
                 </item>
                 <item>
-                 <widget class="QLabel" name="dev_class">
+                 <widget class="QLabel" name="dev_class_label">
                   <property name="text">
                    <string>dev_class</string>
                   </property>
                  </widget>
                 </item>
                 <item>
-                 <widget class="QLabel" name="name">
+                 <widget class="QLabel" name="name_label">
                   <property name="text">
                    <string>name</string>
                   </property>
                  </widget>
                 </item>
                 <item>
-                 <widget class="QLabel" name="rssi">
-                  <property name="text">
-                   <string>rssi</string>
-                  </property>
-                 </widget>
-                </item>
-                <item>
-                 <widget class="QLabel" name="serv_class">
+                 <widget class="QLabel" name="serv_class_label">
                   <property name="text">
                    <string>serv_class</string>
                   </property>
@@ -102,6 +95,73 @@
                <property name="frameShadow">
                 <enum>QFrame::Raised</enum>
                </property>
+               <layout class="QVBoxLayout" name="verticalLayout_4">
+                <item>
+                 <layout class="QHBoxLayout" name="horizontalLayout_3">
+                  <item>
+                   <widget class="QPushButton" name="ble_read_btn">
+                    <property name="text">
+                     <string>read</string>
+                    </property>
+                   </widget>
+                  </item>
+                  <item>
+                   <widget class="QPushButton" name="ble_write_btn">
+                    <property name="text">
+                     <string>write</string>
+                    </property>
+                   </widget>
+                  </item>
+                  <item>
+                   <spacer name="horizontalSpacer">
+                    <property name="orientation">
+                     <enum>Qt::Horizontal</enum>
+                    </property>
+                    <property name="sizeHint" stdset="0">
+                     <size>
+                      <width>40</width>
+                      <height>20</height>
+                     </size>
+                    </property>
+                   </spacer>
+                  </item>
+                  <item>
+                   <widget class="QPushButton" name="ble_disconnect_btn">
+                    <property name="text">
+                     <string>disconnect</string>
+                    </property>
+                   </widget>
+                  </item>
+                 </layout>
+                </item>
+                <item>
+                 <layout class="QHBoxLayout" name="horizontalLayout_4">
+                  <item>
+                   <widget class="QCheckBox" name="ble_hex_send_check">
+                    <property name="text">
+                     <string>hex_send</string>
+                    </property>
+                   </widget>
+                  </item>
+                  <item>
+                   <spacer name="horizontalSpacer_2">
+                    <property name="orientation">
+                     <enum>Qt::Horizontal</enum>
+                    </property>
+                    <property name="sizeHint" stdset="0">
+                     <size>
+                      <width>40</width>
+                      <height>20</height>
+                     </size>
+                    </property>
+                   </spacer>
+                  </item>
+                 </layout>
+                </item>
+                <item>
+                 <widget class="QTextEdit" name="ble_wdata_edit"/>
+                </item>
+               </layout>
               </widget>
              </item>
             </layout>

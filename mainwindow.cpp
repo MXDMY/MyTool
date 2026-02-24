@@ -26,6 +26,9 @@ MainWindow::MainWindow(QWidget *parent)
 
     setWindowTitle(tr("我的工具"));
 
+    ui->serial_port_btn->setText(tr("串口"));
+    ui->blue_tooth_btn->setText(tr("蓝牙主机"));
+
 #if defined(Q_OS_WIN) && defined(DDESKTOP_ENABLE)
     ddesktop = new QVideoWidget();
     ddesktop->setAttribute(Qt::WA_DeleteOnClose);

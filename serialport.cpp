@@ -10,7 +10,7 @@ SerialPort::SerialPort(QWidget *parent) :
     setWindowTitle(tr("串口工具"));
 
     info_list = QSerialPortInfo::availablePorts();
-    for (QSerialPortInfo info : info_list)
+    for (const QSerialPortInfo& info : qAsConst(info_list))
     {
         ui->port_area->addItem(info.portName());
         port_list.append(new QSerialPort(info, this));
@@ -90,7 +90,7 @@ SerialPort::~SerialPort()
 
 void SerialPort::closeEvent(QCloseEvent *event)
 {
-    for (QSerialPort* port : port_list)
+    for (QSerialPort* port : qAsConst(port_list))
     {
         if (port->isOpen())
         {
