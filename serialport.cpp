@@ -200,33 +200,35 @@ void SerialPort::send(QString text)
     }
 
     // 发送数据
+    const char* codec_name = Q_NULLPTR;
+    switch (ui->encoding_box->currentData().toInt())
+    {
+    case Unicode:
+        codec_name = "UTF-16";
+        break;
+    case UTF8:
+        codec_name = "UTF-8";
+        break;
+    default:
+        appendMessage(tr("无法处理的字符编码"));
+        return;
+    }
+    QTextCodec* codec = QTextCodec::codecForName(codec_name);
     QString terminal_text;
+    QByteArray ba;
+    qint64 size;
     if (Qt::Unchecked == ui->hex_send_check->checkState())
     {
-        const char* name = Q_NULLPTR;
-        switch (ui->encoding_box->currentData().toInt())
-        {
-        case Unicode:
-            name = "UTF-16";
-            break;
-        case UTF8:
-            name = "UTF-8";
-            break;
-        default:
-            appendMessage(tr("无法处理的字符编码"));
-            return;
-        }
-        QTextCodec* codec = QTextCodec::codecForName(name);
-        QByteArray ba = codec->fromUnicode(text);
-        qint64 size = port->write(ba);
-        terminal_text = codec->toUnicode(ba.left(size));
-
-        send_size += size;
+        ba = codec->fromUnicode(text);
+        size = port->write(ba);
     }
     else
     {
-        // TODO
+        ba = QByteArray::fromHex(text.toUtf8());
+        size = port->write(ba);
     }
+    send_size += size;
+    terminal_text = codec->toUnicode(ba.left(size));
     // 显示已发送字节数
     ui->send_size_label->setText(QString::number(send_size));
     // 回显已发送的数据

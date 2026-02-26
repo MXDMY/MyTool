@@ -14,6 +14,7 @@
 #include <QLowEnergyCharacteristic>
 #include <QTimer>
 #include <QLowEnergyDescriptor>
+#include <QTextCodec>
 
 namespace Ui {
 class BlueTooth;
@@ -70,6 +71,20 @@ private slots:
 
     void on_ble_read_btn_clicked();
 
+    void on_ble_write_btn_clicked();
+
+    void ble_serv_characteristicChangedSlot(const QLowEnergyCharacteristic &characteristic, const QByteArray &newValue);
+
+    void ble_serv_characteristicReadSlot(const QLowEnergyCharacteristic &characteristic, const QByteArray &value);
+
+    void ble_serv_characteristicWrittenSlot(const QLowEnergyCharacteristic &characteristic, const QByteArray &newValue);
+
+    void ble_serv_descriptorReadSlot(const QLowEnergyDescriptor &descriptor, const QByteArray &value);
+
+    void ble_serv_descriptorWrittenSlot(const QLowEnergyDescriptor &descriptor, const QByteArray &newValue);
+
+    void ble_serv_errorSlot(QLowEnergyService::ServiceError newError);
+
 private:
     void appendBleMessage(QString msg);
 
@@ -79,6 +94,9 @@ private:
 
     // 将 ble 特征值权限显示为文本
     QString bleCharaPerm2Str(QLowEnergyCharacteristic::PropertyTypes p);
+
+    // 根据 uuid 查找 ble 服务，没有返回空
+    QLowEnergyService* bleGetServ(QBluetoothUuid uuid);
 
 private:
     Ui::BlueTooth *ui;

@@ -47,6 +47,8 @@ BlueTooth::BlueTooth(QWidget *parent) :
     ui->ble_write_btn->setText(tr("写入"));
     ui->ble_hex_send_check->setText(tr("HEX 发送"));
     ui->ble_disconnect_btn->setText(tr("断开"));
+
+    ui->ble_wdata_edit->setToolTip(tr("默认编码：UTF-8"));
 }
 
 BlueTooth::~BlueTooth()
@@ -402,6 +404,12 @@ void BlueTooth::ble_errorSlot(QLowEnergyController::Error newError)
 void BlueTooth::ble_serviceDiscoveredSlot(const QBluetoothUuid &newService)
 {
     QLowEnergyService* serv = ble->createServiceObject(newService, ble);
+    connect(serv, &QLowEnergyService::characteristicChanged, this, &BlueTooth::ble_serv_characteristicChangedSlot);
+    connect(serv, &QLowEnergyService::characteristicRead, this, &BlueTooth::ble_serv_characteristicReadSlot);
+    connect(serv, &QLowEnergyService::characteristicWritten, this, &BlueTooth::ble_serv_characteristicWrittenSlot);
+    connect(serv, &QLowEnergyService::descriptorRead, this, &BlueTooth::ble_serv_descriptorReadSlot);
+    connect(serv, &QLowEnergyService::descriptorWritten, this, &BlueTooth::ble_serv_descriptorWrittenSlot);
+    connect(serv, SIGNAL(error(QLowEnergyService::ServiceError)), this, SLOT(ble_serv_errorSlot(QLowEnergyService::ServiceError)));
     ble_serv_list.append(serv);
 }
 
@@ -527,14 +535,158 @@ void BlueTooth::on_ble_read_btn_clicked()
     item = item_parent->child(cur_row, name_uuid_col);
     if (item->data(ble_chara_uuid_role).isValid())
     {
+        QStandardItem* item_chara = item;
+        QStandardItem* item_serv = item_chara->parent();
+
+        QBluetoothUuid uuid_chara(item_chara->data(ble_chara_uuid_role).toString());
+        QBluetoothUuid uuid_serv(item_serv->data(ble_serv_uuid_role).toString());
+
+        QLowEnergyService* serv = bleGetServ(uuid_serv);
+        if (! serv)
+        {
+            appendBleMessage(tr("查询服务失败"));
+            return;
+        }
+
+        serv->readCharacteristic(serv->characteristic(uuid_chara));
+    }
+    else if (item->data(ble_desc_uuid_role).isValid())
+    {
+        QStandardItem* item_desc = item;
+        QStandardItem* item_chara = item_desc->parent();
+        QStandardItem* item_serv = item_desc->parent()->parent();
+
+        QBluetoothUuid uuid_desc(item_desc->data(ble_desc_uuid_role).toString());
+        QBluetoothUuid uuid_chara(item_chara->data(ble_chara_uuid_role).toString());
+        QBluetoothUuid uuid_serv(item_serv->data(ble_serv_uuid_role).toString());
+
+        QLowEnergyService* serv = bleGetServ(uuid_serv);
+        if (! serv)
+        {
+            appendBleMessage(tr("查询服务失败"));
+            return;
+        }
+
+        serv->readDescriptor(serv->characteristic(uuid_chara).descriptor(uuid_desc));
+    }
+    else
+    {
+        appendBleMessage(tr("仅允许对特征值或描述进行读取"));
+        return;
+    }
+}
+
+QLowEnergyService* BlueTooth::bleGetServ(QBluetoothUuid uuid)
+{
+    for (int i = 0; i < ble_serv_list.count(); i++)
+    {
+        if (ble_serv_list.at(i)->serviceUuid() == uuid)
+            return ble_serv_list.at(i);
+    }
+
+    return Q_NULLPTR;
+}
+
+void BlueTooth::on_ble_write_btn_clicked()
+{
+    QStandardItemModel* model = qobject_cast<QStandardItemModel*>(ui->ble_serv_view->model());
+    QStandardItem* item = model->itemFromIndex(ui->ble_serv_view->currentIndex());
+    if (Q_NULLPTR == item)
+    {
+        appendBleMessage(tr("试图写入无效项"));
+        return;
+    }
+    int cur_row = item->row();
+    QStandardItem* item_parent = item->parent();
+    if (Q_NULLPTR == item_parent)
+    {
+        appendBleMessage(tr("不允许写入根项"));
+        return;
+    }
+    int name_uuid_col = 0;
+    for (; name_uuid_col < model->columnCount(); name_uuid_col++)
+    {
+        if (model->headerData(name_uuid_col, Qt::Horizontal, ble_serv_view_col_role) == NameUUIDColRole)
+            break;
+    }
+    item = item_parent->child(cur_row, name_uuid_col);
+    if (item->data(ble_chara_uuid_role).isValid())
+    {
+        QStandardItem* item_chara = item;
+        QStandardItem* item_serv = item_chara->parent();
+
+        QBluetoothUuid uuid_chara(item_chara->data(ble_chara_uuid_role).toString());
+        QBluetoothUuid uuid_serv(item_serv->data(ble_serv_uuid_role).toString());
+
+        QLowEnergyService* serv = bleGetServ(uuid_serv);
+        if (! serv)
+        {
+            appendBleMessage(tr("查询服务失败"));
+            return;
+        }
+
+//        serv->writeCharacteristic(serv->characteristic(uuid_chara));
         // TODO
     }
     else if (item->data(ble_desc_uuid_role).isValid())
     {
-        // TODO
+        QStandardItem* item_desc = item;
+        QStandardItem* item_chara = item_desc->parent();
+        QStandardItem* item_serv = item_desc->parent()->parent();
+
+        QBluetoothUuid uuid_desc(item_desc->data(ble_desc_uuid_role).toString());
+        QBluetoothUuid uuid_chara(item_chara->data(ble_chara_uuid_role).toString());
+        QBluetoothUuid uuid_serv(item_serv->data(ble_serv_uuid_role).toString());
+
+        QLowEnergyService* serv = bleGetServ(uuid_serv);
+        if (! serv)
+        {
+            appendBleMessage(tr("查询服务失败"));
+            return;
+        }
+        QLowEnergyCharacteristic chara = serv->characteristic(uuid_chara);
+        QLowEnergyDescriptor desc = chara.descriptor(uuid_desc);
+
+        QTextCodec* codec = QTextCodec::codecForName("UTF-8");
+        QByteArray ba = codec->fromUnicode(ui->ble_wdata_edit->toPlainText());
+        if (Qt::Unchecked != ui->ble_hex_send_check->checkState())
+            ba = QByteArray::fromHex(ba);
+
+        serv->writeDescriptor(desc, ba);
     }
     else
     {
-        // TODO
+        appendBleMessage(tr("仅允许对特征值或描述进行写入"));
+        return;
     }
+}
+
+void BlueTooth::ble_serv_characteristicChangedSlot(const QLowEnergyCharacteristic &characteristic, const QByteArray &newValue)
+{
+    appendBleMessage(characteristic.uuid().toString() + " <- " + QString::fromUtf8(newValue.toHex(' ')));
+}
+
+void BlueTooth::ble_serv_characteristicReadSlot(const QLowEnergyCharacteristic &characteristic, const QByteArray &value)
+{
+    appendBleMessage(characteristic.uuid().toString() + " <- " + QString::fromUtf8(value.toHex(' ')));
+}
+
+void BlueTooth::ble_serv_characteristicWrittenSlot(const QLowEnergyCharacteristic &characteristic, const QByteArray &newValue)
+{
+    appendBleMessage(characteristic.uuid().toString() + " -> " + QString::fromUtf8(newValue.toHex(' ')));
+}
+
+void BlueTooth::ble_serv_descriptorReadSlot(const QLowEnergyDescriptor &descriptor, const QByteArray &value)
+{
+    appendBleMessage(descriptor.uuid().toString() + " <- " + QString::fromUtf8(value.toHex(' ')));
+}
+
+void BlueTooth::ble_serv_descriptorWrittenSlot(const QLowEnergyDescriptor &descriptor, const QByteArray &newValue)
+{
+    appendBleMessage(descriptor.uuid().toString() + " -> " + QString::fromUtf8(newValue.toHex(' ')));
+}
+
+void BlueTooth::ble_serv_errorSlot(QLowEnergyService::ServiceError newError)
+{
+    appendBleMessage(tr("ble 服务错误：%1").arg(newError));
 }
