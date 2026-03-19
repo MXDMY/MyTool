@@ -15,12 +15,14 @@ DEFINES += DDESKTOP_ENABLE
 
 SOURCES += \
     bluetooth.cpp \
+    common.cpp \
     main.cpp \
     mainwindow.cpp \
     serialport.cpp
 
 HEADERS += \
     bluetooth.h \
+    common.h \
     mainwindow.h \
     serialport.h
 
@@ -33,3 +35,8 @@ FORMS += \
 qnx: target.path = /tmp/$${TARGET}/bin
 else: unix:!android: target.path = /opt/$${TARGET}/bin
 !isEmpty(target.path): INSTALLS += target
+
+DISTFILES +=
+
+RESOURCES += \
+    res.qrc

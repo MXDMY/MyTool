@@ -10,6 +10,7 @@
 #include <windows.h>
 #endif
 
+#include "common.h"
 #include "serialport.h"
 #include "bluetooth.h"
 

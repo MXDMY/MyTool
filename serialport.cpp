@@ -8,15 +8,21 @@ SerialPort::SerialPort(QWidget *parent) :
     ui->setupUi(this);
 
     setWindowTitle(tr("串口工具"));
+    setStyleSheet(Common::Style("dark.qss"));
 
     info_list = QSerialPortInfo::availablePorts();
     for (const QSerialPortInfo& info : qAsConst(info_list))
     {
         ui->port_area->addItem(info.portName());
-        port_list.append(new QSerialPort(info, this));
+        QSerialPort* port = new QSerialPort(info, this);
+        port_list.append(port);
     }
 
     ui->terminal_area->setLineWrapMode(QTextEdit::NoWrap);
+    QFont font = ui->terminal_area->font();
+    font.setPointSize(13);
+    font.setLetterSpacing(QFont::AbsoluteSpacing, 1.0);
+    ui->terminal_area->document()->setDefaultFont(font);
     ui->msg_area->setLineWrapMode(QTextEdit::NoWrap);
     ui->msg_area->setToolTip(tr("消息窗"));
     ui->port_area->installEventFilter(this);
@@ -78,6 +84,7 @@ SerialPort::SerialPort(QWidget *parent) :
     ui->encoding_label->setText(tr("字符编码"));
     ui->encoding_box->addItem("UTF-8", UTF8);
     ui->encoding_box->addItem("Unicode(UTF-16)", Unicode);
+    ui->encoding_box->setToolTip(tr("HEX 固定使用 UTF-8"));
     ui->clear_size_btn->setText(tr("清除字节数"));
     ui->send_size_label->setToolTip(tr("已发送"));
     ui->recv_size_label->setToolTip(tr("已接收"));
@@ -214,7 +221,6 @@ void SerialPort::send(QString text)
         return;
     }
     QTextCodec* codec = QTextCodec::codecForName(codec_name);
-    QString terminal_text;
     QByteArray ba;
     qint64 size;
     if (Qt::Unchecked == ui->hex_send_check->checkState())
@@ -228,15 +234,39 @@ void SerialPort::send(QString text)
         size = port->write(ba);
     }
     send_size += size;
-    terminal_text = codec->toUnicode(ba.left(size));
     // 显示已发送字节数
     ui->send_size_label->setText(QString::number(send_size));
-    // 回显已发送的数据
+
+    echoTerminalText(port_name, codec, ba.left(size), true);
+}
+
+void SerialPort::echoTerminalText(QString port_name, QTextCodec* codec, QByteArray ba, bool is_send)
+{
+    QString terminal_text;
+
+    if (Qt::Unchecked != ui->hex_show_check->checkState())
+        terminal_text = QString::fromUtf8(ba.toHex(' '));
+    else
+        terminal_text = codec->toUnicode(ba);
+
     if (Qt::Unchecked != ui->timestamp_check->checkState())
     {
-        terminal_text = QDateTime::currentDateTime().toString("[HH:mm:ss:zzz]->")
-                + port_name + "$" + terminal_text;
+        QString direction;
+        if (is_send)
+            direction = "--> ";
+        else
+            direction = "<-- ";
+
+        terminal_text = QString("<font color='#2a9bf5'>%1<br></font>" // <br> 会产生一个换行，但仍在同一段落中
+                                "<font color='#fee625'>%2</font>"
+                                "<font color='#3dcd07'>%3</font>"
+                                "<font color='#fb6719'>%4</font>"
+                                "<pre>%5</pre>")
+                .arg(QDateTime::currentDateTime().toString("[HH:mm:ss:zzz]"), direction, port_name, "$"
+                     , terminal_text);
     }
+
+    // append() 内部会将传入字符串包裹在 HTML 的 <p> 段落标签中
     ui->terminal_area->append(terminal_text);
 }
 
@@ -261,6 +291,8 @@ void SerialPort::on_open_btn_clicked()
         port->close();
         ui->open_btn->setText(tr("打开"));
         ui->port_area->setEnabled(true);
+        disconnect(port, &QSerialPort::errorOccurred, this, &SerialPort::port_errorOccurredSlot);
+        disconnect(port, &QSerialPort::readyRead, this, &SerialPort::port_readyReadSlot);
     }
     else
     {
@@ -274,9 +306,11 @@ void SerialPort::on_open_btn_clicked()
         {
             ui->open_btn->setText(tr("关闭"));
             ui->port_area->setEnabled(false);
+            connect(port, &QSerialPort::errorOccurred, this, &SerialPort::port_errorOccurredSlot);
+            connect(port, &QSerialPort::readyRead, this, &SerialPort::port_readyReadSlot);
         }
         else
-            appendMessage(tr("打开失败"));
+            appendMessage(tr("打开失败：%1").arg(port->errorString()));
     }
 }
 
@@ -326,6 +360,9 @@ void SerialPort::on_send_btn_clicked()
 void SerialPort::on_port_area_currentItemChanged(QListWidgetItem *current, QListWidgetItem *previous)
 {
     (void)previous;
+    // 初始加载后 currentItem 会发生改变，但是却不会被选中，
+    // 导致样式表 QListWidget::item:selected 相关样式不同步
+    ui->port_area->setItemSelected(current, true);
     int index = getPortIndex(current->text());
     QSerialPortInfo info = info_list.at(index);
     QSerialPort* port = port_list.at(index);
@@ -350,4 +387,14 @@ void SerialPort::on_clear_size_btn_clicked()
 void SerialPort::on_clear_btn_clicked()
 {
     ui->terminal_area->clear();
+}
+
+void SerialPort::port_errorOccurredSlot(QSerialPort::SerialPortError error)
+{
+    (void)error;
+}
+
+void SerialPort::port_readyReadSlot()
+{
+    // TODO
 }

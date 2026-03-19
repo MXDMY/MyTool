@@ -8,6 +8,7 @@ BlueTooth::BlueTooth(QWidget *parent) :
     ui->setupUi(this);
 
     setWindowTitle(tr("蓝牙工具"));
+    setStyleSheet(Common::Style("dark.qss"));
 
     ui->tabWidget->setTabText(0, tr("低功耗蓝牙"));
 

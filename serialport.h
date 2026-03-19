@@ -12,6 +12,8 @@
 #include <QTimer>
 #include <QTextCodec>
 
+#include "common.h"
+
 namespace Ui {
 class SerialPort;
 }
@@ -54,6 +56,10 @@ private slots:
 
     void on_clear_btn_clicked();
 
+    void port_errorOccurredSlot(QSerialPort::SerialPortError error);
+
+    void port_readyReadSlot();
+
 private:
     void setFixInfo(QSerialPortInfo info);
 
@@ -65,6 +71,8 @@ private:
     void appendMessage(QString msg);
 
     void send(QString text);
+
+    void echoTerminalText(QString port_name, QTextCodec* codec, QByteArray ba, bool is_send);
 
 private:
     Ui::SerialPort *ui;

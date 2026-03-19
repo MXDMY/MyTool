@@ -25,6 +25,7 @@ MainWindow::MainWindow(QWidget *parent)
     ui->setupUi(this);
 
     setWindowTitle(tr("我的工具"));
+    setStyleSheet(Common::Style("dark.qss"));
 
     ui->serial_port_btn->setText(tr("串口"));
     ui->blue_tooth_btn->setText(tr("蓝牙主机"));

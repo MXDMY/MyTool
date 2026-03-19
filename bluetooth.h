@@ -16,6 +16,8 @@
 #include <QLowEnergyDescriptor>
 #include <QTextCodec>
 
+#include "common.h"
+
 namespace Ui {
 class BlueTooth;
 }
