@@ -5,6 +5,11 @@
 #include <QMediaPlayer>
 #include <QVideoWidget>
 #include <QDesktopWidget>
+#include <QGraphicsScene>
+#include <QGraphicsView>
+#include <QGraphicsVideoItem>
+#include <QGraphicsProxyWidget>
+#include <QPushButton>
 
 #ifdef Q_OS_WIN
 #include <windows.h>
@@ -30,11 +35,11 @@ protected:
     void closeEvent(QCloseEvent *event) override;
 
 private slots:
-    void on_serial_port_btn_clicked();
+    void serial_port_btn_clickedSlot();
 
     void mediaStatusChangedSlot(QMediaPlayer::MediaStatus status);
 
-    void on_blue_tooth_btn_clicked();
+    void blue_tooth_btn_clickedSlot();
 
 private:
     Ui::MainWindow *ui;

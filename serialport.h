@@ -11,6 +11,7 @@
 #include <QDateTime>
 #include <QTimer>
 #include <QTextCodec>
+#include <QScrollBar>
 
 #include "common.h"
 
@@ -88,6 +89,9 @@ private:
 
     qulonglong send_size = 0;
     qulonglong recv_size = 0;
+
+    QTextDecoder* stream_decoder = Q_NULLPTR;
+    int encoding = -1;
 };
 
 #endif // SERIALPORT_H

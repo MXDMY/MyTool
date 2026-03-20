@@ -92,11 +92,6 @@ SerialPort::SerialPort(QWidget *parent) :
 
 SerialPort::~SerialPort()
 {
-    delete ui;
-}
-
-void SerialPort::closeEvent(QCloseEvent *event)
-{
     for (QSerialPort* port : qAsConst(port_list))
     {
         if (port->isOpen())
@@ -105,7 +100,17 @@ void SerialPort::closeEvent(QCloseEvent *event)
             port->close();
         }
     }
+    if (stream_decoder)
+    {
+        delete stream_decoder;
+        stream_decoder = Q_NULLPTR;
+    }
 
+    delete ui;
+}
+
+void SerialPort::closeEvent(QCloseEvent *event)
+{
     QWidget::closeEvent(event);
 }
 
@@ -247,27 +252,40 @@ void SerialPort::echoTerminalText(QString port_name, QTextCodec* codec, QByteArr
     if (Qt::Unchecked != ui->hex_show_check->checkState())
         terminal_text = QString::fromUtf8(ba.toHex(' '));
     else
-        terminal_text = codec->toUnicode(ba);
-
-    if (Qt::Unchecked != ui->timestamp_check->checkState())
     {
-        QString direction;
         if (is_send)
-            direction = "--> ";
+            terminal_text = codec->toUnicode(ba);
         else
-            direction = "<-- ";
-
-        terminal_text = QString("<font color='#2a9bf5'>%1<br></font>" // <br> 会产生一个换行，但仍在同一段落中
-                                "<font color='#fee625'>%2</font>"
-                                "<font color='#3dcd07'>%3</font>"
-                                "<font color='#fb6719'>%4</font>"
-                                "<pre>%5</pre>")
-                .arg(QDateTime::currentDateTime().toString("[HH:mm:ss:zzz]"), direction, port_name, "$"
-                     , terminal_text);
+            terminal_text = stream_decoder->toUnicode(ba);
     }
 
-    // append() 内部会将传入字符串包裹在 HTML 的 <p> 段落标签中
-    ui->terminal_area->append(terminal_text);
+    QTextCursor cursor = ui->terminal_area->textCursor();
+    cursor.movePosition(QTextCursor::End);
+    if (Qt::Unchecked != ui->timestamp_check->checkState())
+    {
+        QString direction = "<-- ";
+        if (is_send)
+            direction = "--> ";
+
+        terminal_text = QString(
+            "<div style='margin:0; padding:0;'>"
+            "<br><span style='color:#2a9bf5;'>%1</span><br>"
+            "<span style='color:#fee625;'>%2</span>"
+            "<span style='color:#3dcd07;'>%3</span>"
+            "<span style='color:#fb6719;'>%4</span>"
+            "<div style='white-space:pre-wrap; margin:0; padding:0; font-family:inherit; font-size:inherit; line-height:inherit;'>%5</div>"
+            "</div>"
+        ).arg(QDateTime::currentDateTime().toString("[HH:mm:ss:zzz]"), direction.toHtmlEscaped()
+              , port_name.toHtmlEscaped(), "$", terminal_text.toHtmlEscaped());
+
+        cursor.insertHtml(terminal_text);
+    }
+    else
+    {
+        ui->terminal_area->insertPlainText(terminal_text);
+    }
+    QScrollBar* vbar = ui->terminal_area->verticalScrollBar();
+    vbar->setValue(vbar->maximum());
 }
 
 void SerialPort::on_open_btn_clicked()
@@ -396,5 +414,37 @@ void SerialPort::port_errorOccurredSlot(QSerialPort::SerialPortError error)
 
 void SerialPort::port_readyReadSlot()
 {
-    // TODO
+    QString port_name = ui->port_area->currentItem()->text();
+    int port_index = getPortIndex(port_name);
+    QSerialPort* port = port_list.at(port_index);
+
+    const char* codec_name = Q_NULLPTR;
+    switch (ui->encoding_box->currentData().toInt())
+    {
+    case Unicode:
+        codec_name = "UTF-16";
+        break;
+    case UTF8:
+        codec_name = "UTF-8";
+        break;
+    default:
+        appendMessage(tr("无法处理的字符编码"));
+        return;
+    }
+    QTextCodec* codec = QTextCodec::codecForName(codec_name);
+
+    if (Q_NULLPTR == stream_decoder)
+        stream_decoder = codec->makeDecoder();
+    else if (ui->encoding_box->currentData().toInt() != encoding)
+    {
+        delete stream_decoder;
+        stream_decoder = codec->makeDecoder();
+    }
+    encoding = ui->encoding_box->currentData().toInt();
+
+    QByteArray ba = port->readAll();
+    recv_size += ba.size();
+    // 显示已接收字节数
+    ui->recv_size_label->setText(QString::number(recv_size));
+    echoTerminalText(port_name, codec, ba, false);
 }

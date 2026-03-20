@@ -25,10 +25,60 @@ MainWindow::MainWindow(QWidget *parent)
     ui->setupUi(this);
 
     setWindowTitle(tr("我的工具"));
-    setStyleSheet(Common::Style("dark.qss"));
+    setAttribute(Qt::WA_TranslucentBackground);
+    setStyleSheet("background: transparent;");
+    QSize mainwindow_size(640, 360);
+    resize(mainwindow_size);
 
-    ui->serial_port_btn->setText(tr("串口"));
-    ui->blue_tooth_btn->setText(tr("蓝牙主机"));
+    // 创建场景、视图和视频图元
+    QGraphicsScene* scene = new QGraphicsScene(this);
+    QGraphicsView* view = new QGraphicsView(scene, this);
+    view->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+    view->setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+    setCentralWidget(view);
+    QGraphicsVideoItem* video_item = new QGraphicsVideoItem();
+    video_item->setSize(mainwindow_size);
+    scene->addItem(video_item);
+    // 创建视频播放器
+    QMediaPlayer* player = new QMediaPlayer(this);
+    player->setVideoOutput(video_item);
+    player->setMedia(QUrl::fromLocalFile("/home/my/下载/马达加斯加的企鹅.mp4"));
+    player->play();
+    // 添加按钮作为图元
+    QString btn_style = R"(
+                            QPushButton
+                            {
+                                background-color: rgba(152, 144, 245, 100);
+                                border: none;
+                                color: #ffffff;
+                                border-radius: 5px;
+                            }
+                            QPushButton:hover
+                            {
+                                background-color: rgba(240, 239, 254, 100);
+                            }
+                            QPushButton:pressed
+                            {
+                                background-color: transparent;
+                            }
+                            )";
+    QSize btn_size(70, 30);
+    QPushButton* serial_port_btn = new QPushButton(tr("串口"));
+    connect(serial_port_btn, &QPushButton::clicked, this, &MainWindow::serial_port_btn_clickedSlot);
+    serial_port_btn->setStyleSheet(btn_style);
+    serial_port_btn->setFixedSize(btn_size);
+    QPushButton* blue_tooth_btn = new QPushButton(tr("蓝牙主机"));
+    connect(blue_tooth_btn, &QPushButton::clicked, this, &MainWindow::blue_tooth_btn_clickedSlot);
+    blue_tooth_btn->setStyleSheet(btn_style);
+    blue_tooth_btn->setFixedSize(btn_size);
+    QGraphicsProxyWidget* proxy_serial_port_btn = scene->addWidget(serial_port_btn);
+    QGraphicsProxyWidget* proxy_blue_tooth_btn = scene->addWidget(blue_tooth_btn);
+    proxy_serial_port_btn->setPos(0, 30);
+    proxy_blue_tooth_btn->setPos(0, 60);
+    // 调整图元层级
+    video_item->setZValue(0);
+    proxy_serial_port_btn->setZValue(1);
+    proxy_blue_tooth_btn->setZValue(1);
 
 #if defined(Q_OS_WIN) && defined(DDESKTOP_ENABLE)
     ddesktop = new QVideoWidget();
@@ -75,7 +125,7 @@ void MainWindow::closeEvent(QCloseEvent *event)
     QMainWindow::closeEvent(event);
 }
 
-void MainWindow::on_serial_port_btn_clicked()
+void MainWindow::serial_port_btn_clickedSlot()
 {
     serial_port.show();
 }
@@ -93,7 +143,7 @@ void MainWindow::mediaStatusChangedSlot(QMediaPlayer::MediaStatus status)
     }
 }
 
-void MainWindow::on_blue_tooth_btn_clicked()
+void MainWindow::blue_tooth_btn_clickedSlot()
 {
     blue_tooth.show();
 }
