@@ -25,33 +25,41 @@ MainWindow::MainWindow(QWidget *parent)
     ui->setupUi(this);
 
     setWindowTitle(tr("我的工具"));
+    setWindowFlags(windowFlags() | Qt::FramelessWindowHint);
     setAttribute(Qt::WA_TranslucentBackground);
     setStyleSheet("background: transparent;");
     QSize mainwindow_size(640, 360);
     resize(mainwindow_size);
 
+    settings = new QSettings(QCoreApplication::applicationDirPath() + "/settings.ini", QSettings::IniFormat, this);
+
     // 创建场景、视图和视频图元
     QGraphicsScene* scene = new QGraphicsScene(this);
-    QGraphicsView* view = new QGraphicsView(scene, this);
+    view = new QGraphicsView(scene, this);
     view->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
     view->setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+    view->viewport()->installEventFilter(this);
+    view->viewport()->setMouseTracking(true);
     setCentralWidget(view);
-    QGraphicsVideoItem* video_item = new QGraphicsVideoItem();
+    video_item = new QGraphicsVideoItem();
     video_item->setSize(mainwindow_size);
     scene->addItem(video_item);
     // 创建视频播放器
     QMediaPlayer* player = new QMediaPlayer(this);
     player->setVideoOutput(video_item);
-    player->setMedia(QUrl::fromLocalFile("/home/my/下载/马达加斯加的企鹅.mp4"));
+    player->setMedia(QUrl::fromLocalFile(settings->value(key_bgpath).toString()));
     player->play();
     // 添加按钮作为图元
     QString btn_style = R"(
                             QPushButton
                             {
-                                background-color: rgba(152, 144, 245, 100);
+                                background-color: rgba(152, 144, 245, 0);
                                 border: none;
                                 color: #ffffff;
                                 border-radius: 5px;
+                                icon-size: 32px;
+                                width: 32px;
+                                height: 32px;
                             }
                             QPushButton:hover
                             {
@@ -62,23 +70,34 @@ MainWindow::MainWindow(QWidget *parent)
                                 background-color: transparent;
                             }
                             )";
-    QSize btn_size(70, 30);
-    QPushButton* serial_port_btn = new QPushButton(tr("串口"));
+
+    QPushButton* close_btn = new QPushButton(QIcon(":/image/ico/close.png"), "");
+    connect(close_btn, &QPushButton::clicked, this, &MainWindow::close_btn_clickedSlot);
+    close_btn->setStyleSheet(btn_style);
+    QGraphicsProxyWidget* proxy_close_btn = scene->addWidget(close_btn);
+    proxy_close_btn->setPos(mainwindow_size.width() - 32 - 5, 0);
+
+    QPushButton* folder_btn = new QPushButton(QIcon(":/image/ico/folder.png"), "");
+    connect(folder_btn, &QPushButton::clicked, this, &MainWindow::folder_btn_clickedSlot);
+    folder_btn->setStyleSheet(btn_style);
+    QGraphicsProxyWidget* proxy_folder_btn = scene->addWidget(folder_btn);
+    proxy_folder_btn->setPos(5, 0);
+
+    QPushButton* serial_port_btn = new QPushButton(QIcon(":/image/ico/monitor.png"), "");
     connect(serial_port_btn, &QPushButton::clicked, this, &MainWindow::serial_port_btn_clickedSlot);
     serial_port_btn->setStyleSheet(btn_style);
-    serial_port_btn->setFixedSize(btn_size);
-    QPushButton* blue_tooth_btn = new QPushButton(tr("蓝牙主机"));
+    QGraphicsProxyWidget* proxy_serial_port_btn = scene->addWidget(serial_port_btn);
+    proxy_serial_port_btn->setPos(5, 32);
+
+    QPushButton* blue_tooth_btn = new QPushButton(QIcon(":/image/ico/signal.png"), "");
     connect(blue_tooth_btn, &QPushButton::clicked, this, &MainWindow::blue_tooth_btn_clickedSlot);
     blue_tooth_btn->setStyleSheet(btn_style);
-    blue_tooth_btn->setFixedSize(btn_size);
-    QGraphicsProxyWidget* proxy_serial_port_btn = scene->addWidget(serial_port_btn);
     QGraphicsProxyWidget* proxy_blue_tooth_btn = scene->addWidget(blue_tooth_btn);
-    proxy_serial_port_btn->setPos(0, 30);
-    proxy_blue_tooth_btn->setPos(0, 60);
+    proxy_blue_tooth_btn->setPos(5, 64);
     // 调整图元层级
-    video_item->setZValue(0);
-    proxy_serial_port_btn->setZValue(1);
-    proxy_blue_tooth_btn->setZValue(1);
+    // video_item->setZValue(0);
+    // proxy_serial_port_btn->setZValue(1);
+    // proxy_blue_tooth_btn->setZValue(1);
 
 #if defined(Q_OS_WIN) && defined(DDESKTOP_ENABLE)
     ddesktop = new QVideoWidget();
@@ -101,7 +120,7 @@ MainWindow::MainWindow(QWidget *parent)
     ddesktop_mplayer = new QMediaPlayer(this);
     connect(ddesktop_mplayer, &QMediaPlayer::mediaStatusChanged, this, &MainWindow::mediaStatusChangedSlot);
     ddesktop_mplayer->setVideoOutput(ddesktop);
-    ddesktop_mplayer->setMedia(QUrl::fromLocalFile("E:\\a\\马达加斯加的企鹅.1080p.国英双语.BD中英双字[最新电影www.dygangs.me].mp4"));
+    ddesktop_mplayer->setMedia(QUrl::fromLocalFile(settings->value(key_bgpath).toString()));
     ddesktop_mplayer->play();
     ddesktop_mplayer->setVolume(0);
 #endif
@@ -112,6 +131,41 @@ MainWindow::~MainWindow()
     delete ui;
 }
 
+bool MainWindow::eventFilter(QObject *watched, QEvent *event)
+{
+    static QPoint drag_pos; // 记录拖动起始坐标
+    static bool allow_drag = false;
+
+    if (qobject_cast<QWidget*>(watched) == view->viewport())
+    {
+        switch (event->type())
+        {
+        case QEvent::MouseButtonPress:
+            if (false == allow_drag)
+            {
+                QMouseEvent* mouse_event = static_cast<QMouseEvent*>(event);
+                drag_pos = mouse_event->globalPos();
+                allow_drag = true;
+            }
+            break;
+        case QEvent::MouseMove:
+            if (allow_drag)
+            {
+                QMouseEvent* mouse_event = static_cast<QMouseEvent*>(event);
+                move(pos() + mouse_event->globalPos() - drag_pos);
+                drag_pos = mouse_event->globalPos();
+            }
+            break;
+        case QEvent::MouseButtonRelease:
+            allow_drag = false;
+            break;
+        default:
+            break;
+        }
+    }
+
+    return QMainWindow::eventFilter(watched, event);
+}
 
 void MainWindow::closeEvent(QCloseEvent *event)
 {
@@ -123,6 +177,16 @@ void MainWindow::closeEvent(QCloseEvent *event)
     blue_tooth.close();
 
     QMainWindow::closeEvent(event);
+}
+
+void MainWindow::resizeEvent(QResizeEvent *event)
+{
+    if (video_item && view)
+    {
+        video_item->setSize(view->size());
+        video_item->setPos(0, 0);
+    }
+    QMainWindow::resizeEvent(event);
 }
 
 void MainWindow::serial_port_btn_clickedSlot()
@@ -146,4 +210,16 @@ void MainWindow::mediaStatusChangedSlot(QMediaPlayer::MediaStatus status)
 void MainWindow::blue_tooth_btn_clickedSlot()
 {
     blue_tooth.show();
+}
+
+void MainWindow::folder_btn_clickedSlot()
+{
+    QString filepath = QFileDialog::getOpenFileName(this, tr("选择你的背景"));
+    if (false == filepath.isEmpty())
+        settings->setValue(key_bgpath, filepath);
+}
+
+void MainWindow::close_btn_clickedSlot()
+{
+    close();
 }

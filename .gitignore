@@ -71,3 +71,6 @@ Thumbs.db
 *.dll
 *.exe
 
+# Files suspected of infringement
+*.png
+

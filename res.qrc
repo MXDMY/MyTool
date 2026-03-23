@@ -1,5 +1,9 @@
 <RCC>
     <qresource prefix="/">
         <file>qss/dark.qss</file>
+        <file>image/ico/close.png</file>
+        <file>image/ico/folder.png</file>
+        <file>image/ico/monitor.png</file>
+        <file>image/ico/signal.png</file>
     </qresource>
 </RCC>
