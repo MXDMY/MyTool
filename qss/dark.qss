@@ -6,6 +6,7 @@ QMainWindow
 QWidget
 {
     background-color: #1e1d23;
+    color: #a9b7c6;
 }
 
 QFrame

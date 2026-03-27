@@ -13,6 +13,7 @@
 #include <QFileDialog>
 #include <QCoreApplication>
 #include <QSettings>
+#include <QApplication>
 
 #ifdef Q_OS_WIN
 #include <windows.h>
@@ -36,10 +37,26 @@ public:
 
     bool eventFilter(QObject *watched, QEvent *event) override;
 
+public:
+    enum StretchType
+    {
+        Top,
+        Buttom,
+        Left,
+        Right,
+        TopLeft,
+        TopRight,
+        ButtomLeft,
+        ButtomRight
+    };
+    Q_ENUM(StretchType)
+
 protected:
     void closeEvent(QCloseEvent *event) override;
 
     void resizeEvent(QResizeEvent *event) override;
+
+    void moveEvent(QMoveEvent *event) override;
 
 private slots:
     void serial_port_btn_clickedSlot();
@@ -66,5 +83,12 @@ private:
 
     QSettings* settings = Q_NULLPTR;
     const char* key_bgpath = "video file path use by backgroud";
+    const char* key_winsize = "mainwindow size";
+    const char* key_winpos = "mainwindow pos";
+
+    QGraphicsProxyWidget* proxy_close_btn = Q_NULLPTR;
+    QGraphicsProxyWidget* proxy_folder_btn = Q_NULLPTR;
+    QGraphicsProxyWidget* proxy_serial_port_btn = Q_NULLPTR;
+    QGraphicsProxyWidget* proxy_blue_tooth_btn = Q_NULLPTR;
 };
 #endif // MAINWINDOW_H

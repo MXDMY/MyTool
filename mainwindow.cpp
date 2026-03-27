@@ -24,14 +24,17 @@ MainWindow::MainWindow(QWidget *parent)
 {
     ui->setupUi(this);
 
-    setWindowTitle(tr("我的工具"));
+    settings = new QSettings(QCoreApplication::applicationDirPath() + "/settings.ini", QSettings::IniFormat, this);
+
     setWindowFlags(windowFlags() | Qt::FramelessWindowHint);
     setAttribute(Qt::WA_TranslucentBackground);
     setStyleSheet("background: transparent;");
-    QSize mainwindow_size(640, 360);
-    resize(mainwindow_size);
 
-    settings = new QSettings(QCoreApplication::applicationDirPath() + "/settings.ini", QSettings::IniFormat, this);
+    QSize mainwindow_size = settings->value(key_winsize, QSize(640, 360)).toSize();
+    resize(mainwindow_size);
+    QPoint central_pos(QApplication::desktop()->width() / 2 - mainwindow_size.width() / 2
+                        , QApplication::desktop()->height() / 2 - mainwindow_size.height() / 2);
+    move(settings->value(key_winpos, central_pos).toPoint());
 
     // 创建场景、视图和视频图元
     QGraphicsScene* scene = new QGraphicsScene(this);
@@ -40,6 +43,7 @@ MainWindow::MainWindow(QWidget *parent)
     view->setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
     view->viewport()->installEventFilter(this);
     view->viewport()->setMouseTracking(true);
+    view->setStyleSheet("border: 1px solid #889cfc;");
     setCentralWidget(view);
     video_item = new QGraphicsVideoItem();
     video_item->setSize(mainwindow_size);
@@ -74,26 +78,26 @@ MainWindow::MainWindow(QWidget *parent)
     QPushButton* close_btn = new QPushButton(QIcon(":/image/ico/close.png"), "");
     connect(close_btn, &QPushButton::clicked, this, &MainWindow::close_btn_clickedSlot);
     close_btn->setStyleSheet(btn_style);
-    QGraphicsProxyWidget* proxy_close_btn = scene->addWidget(close_btn);
-    proxy_close_btn->setPos(mainwindow_size.width() - 32 - 5, 0);
+    proxy_close_btn = scene->addWidget(close_btn);
+    proxy_close_btn->setPos(mainwindow_size.width() - 32 - 10, 10);
 
     QPushButton* folder_btn = new QPushButton(QIcon(":/image/ico/folder.png"), "");
     connect(folder_btn, &QPushButton::clicked, this, &MainWindow::folder_btn_clickedSlot);
     folder_btn->setStyleSheet(btn_style);
-    QGraphicsProxyWidget* proxy_folder_btn = scene->addWidget(folder_btn);
-    proxy_folder_btn->setPos(5, 0);
+    proxy_folder_btn = scene->addWidget(folder_btn);
+    proxy_folder_btn->setPos(10, 10);
 
     QPushButton* serial_port_btn = new QPushButton(QIcon(":/image/ico/monitor.png"), "");
     connect(serial_port_btn, &QPushButton::clicked, this, &MainWindow::serial_port_btn_clickedSlot);
     serial_port_btn->setStyleSheet(btn_style);
-    QGraphicsProxyWidget* proxy_serial_port_btn = scene->addWidget(serial_port_btn);
-    proxy_serial_port_btn->setPos(5, 32);
+    proxy_serial_port_btn = scene->addWidget(serial_port_btn);
+    proxy_serial_port_btn->setPos(10, 52);
 
     QPushButton* blue_tooth_btn = new QPushButton(QIcon(":/image/ico/signal.png"), "");
     connect(blue_tooth_btn, &QPushButton::clicked, this, &MainWindow::blue_tooth_btn_clickedSlot);
     blue_tooth_btn->setStyleSheet(btn_style);
-    QGraphicsProxyWidget* proxy_blue_tooth_btn = scene->addWidget(blue_tooth_btn);
-    proxy_blue_tooth_btn->setPos(5, 64);
+    proxy_blue_tooth_btn = scene->addWidget(blue_tooth_btn);
+    proxy_blue_tooth_btn->setPos(10, 94);
     // 调整图元层级
     // video_item->setZValue(0);
     // proxy_serial_port_btn->setZValue(1);
@@ -133,31 +137,146 @@ MainWindow::~MainWindow()
 
 bool MainWindow::eventFilter(QObject *watched, QEvent *event)
 {
-    static QPoint drag_pos; // 记录拖动起始坐标
+    static QPoint drag_pos;    // 记录拖动起始坐标
+    static QPoint stretch_pos; // 记录拉伸起始坐标
     static bool allow_drag = false;
+    static bool is_stretch_area = false;
+    static bool allow_stretch = false;
+    static StretchType stretch_type;
 
     if (qobject_cast<QWidget*>(watched) == view->viewport())
     {
         switch (event->type())
         {
         case QEvent::MouseButtonPress:
-            if (false == allow_drag)
+        {
+            QMouseEvent* mouse_event = static_cast<QMouseEvent*>(event);
+            if (is_stretch_area)
             {
-                QMouseEvent* mouse_event = static_cast<QMouseEvent*>(event);
+                stretch_pos = mouse_event->globalPos();
+                allow_stretch = true;
+            }
+            else
+            {
                 drag_pos = mouse_event->globalPos();
                 allow_drag = true;
             }
+        }
             break;
         case QEvent::MouseMove:
+        {
+            QMouseEvent* mouse_event = static_cast<QMouseEvent*>(event);
+            QPoint mouse_pos = mouse_event->globalPos();
+            int mouse_x = mouse_pos.x();
+            int mouse_y = mouse_pos.y();
+            QPoint window_pos = pos();
+            int window_x = window_pos.x();
+            int window_y = window_pos.y();
+            int window_rx = window_x + frameGeometry().width();
+            int window_bx = window_x;
+            int window_by = window_y + frameGeometry().height();
+            int window_rbx = window_rx;
+            int window_rby = window_by;
+            int scope = 10;
+            QSize window_size = size();
+
             if (allow_drag)
             {
-                QMouseEvent* mouse_event = static_cast<QMouseEvent*>(event);
-                move(pos() + mouse_event->globalPos() - drag_pos);
-                drag_pos = mouse_event->globalPos();
+                move(window_pos + mouse_pos - drag_pos);
+                drag_pos = mouse_pos;
+                break;
             }
+
+            if (allow_stretch)
+            {
+                QPoint p = mouse_pos - stretch_pos;
+                switch (stretch_type)
+                {
+                case TopLeft:
+                    resize(window_size.width() - p.x(), window_size.height() - p.y());
+                    move(window_pos + p);
+                    break;
+                case TopRight:
+                    resize(window_size.width() + p.x(), window_size.height() - p.y());
+                    move(window_pos.x(), window_pos.y() + p.y());
+                    break;
+                case ButtomLeft:
+                    resize(window_size.width() - p.x(), window_size.height() + p.y());
+                    move(window_pos.x() + p.x(), window_pos.y());
+                    break;
+                case ButtomRight:
+                    resize(window_size.width() + p.x(), window_size.height() + p.y());
+                    break;
+                case Top:
+                    resize(window_size.width(), window_size.height() - p.y());
+                    move(window_pos.x(), window_pos.y() + p.y());
+                    break;
+                case Buttom:
+                    resize(window_size.width(), window_size.height() + p.y());
+                    break;
+                case Left:
+                    resize(window_size.width() - p.x(), window_size.height());
+                    move(window_pos.x() + p.x(), window_pos.y());
+                    break;
+                case Right:
+                    resize(window_size.width() + p.x(), window_size.height());
+                    break;
+                }
+                stretch_pos = mouse_pos;
+                break;
+            }
+
+            is_stretch_area = true; // 先假设在拉伸区域
+            if (mouse_x >= window_x && mouse_x <= window_x + scope && mouse_y >= window_y && mouse_y <= window_y + scope)
+            {
+                view->viewport()->setCursor(Qt::SizeFDiagCursor);
+                stretch_type = TopLeft;
+            }
+            else if (mouse_x >= window_rbx - scope && mouse_x <= window_rbx && mouse_y >= window_rby - scope && mouse_y <= window_rby)
+            {
+                view->viewport()->setCursor(Qt::SizeFDiagCursor);
+                stretch_type = ButtomRight;
+            }
+            else if (mouse_x >= window_rx - scope && mouse_x <= window_rx && mouse_y >= window_y && mouse_y <= window_y + scope)
+            {
+                view->viewport()->setCursor(Qt::SizeBDiagCursor);
+                stretch_type = TopRight;
+            }
+            else if (mouse_x >= window_bx && mouse_x <= window_bx + scope && mouse_y >= window_by - scope && mouse_y <= window_by)
+            {
+                view->viewport()->setCursor(Qt::SizeBDiagCursor);
+                stretch_type = ButtomLeft;
+            }
+            else if (mouse_x >= window_x + scope && mouse_x <= window_rx - scope && mouse_y >= window_y && mouse_y <= window_y + scope)
+            {
+                view->viewport()->setCursor(Qt::SizeVerCursor);
+                stretch_type = Top;
+            }
+            else if (mouse_x >= window_x + scope && mouse_x <= window_rx - scope && mouse_y >= window_by - scope && mouse_y <= window_by)
+            {
+                view->viewport()->setCursor(Qt::SizeVerCursor);
+                stretch_type = Buttom;
+            }
+            else if (mouse_x >= window_x && mouse_x <= window_x + scope && mouse_y >= window_y + scope && mouse_y <= window_by - scope)
+            {
+                view->viewport()->setCursor(Qt::SizeHorCursor);
+                stretch_type = Left;
+            }
+            else if (mouse_x >= window_rx - scope && mouse_x <= window_rx && mouse_y >= window_y + scope && mouse_y <= window_by - scope)
+            {
+                view->viewport()->setCursor(Qt::SizeHorCursor);
+                stretch_type = Right;
+            }
+            else
+            {
+                view->viewport()->setCursor(Qt::ArrowCursor);
+                is_stretch_area = false;
+            }
+        }
             break;
         case QEvent::MouseButtonRelease:
             allow_drag = false;
+            allow_stretch = false;
             break;
         default:
             break;
@@ -181,12 +300,23 @@ void MainWindow::closeEvent(QCloseEvent *event)
 
 void MainWindow::resizeEvent(QResizeEvent *event)
 {
-    if (video_item && view)
-    {
-        video_item->setSize(view->size());
-        video_item->setPos(0, 0);
-    }
+    video_item->setSize(view->size());
+    video_item->setPos(0, 0);
+    proxy_close_btn->setPos(event->size().width() - 32 - 10, 10);
+    proxy_folder_btn->setPos(10, 10);
+    proxy_serial_port_btn->setPos(10, 52);
+    proxy_blue_tooth_btn->setPos(10, 94);
+
+    settings->setValue(key_winsize, event->size());
+
     QMainWindow::resizeEvent(event);
+}
+
+void MainWindow::moveEvent(QMoveEvent *event)
+{
+    settings->setValue(key_winpos, event->pos());
+
+    QMainWindow::moveEvent(event);
 }
 
 void MainWindow::serial_port_btn_clickedSlot()
@@ -214,7 +344,8 @@ void MainWindow::blue_tooth_btn_clickedSlot()
 
 void MainWindow::folder_btn_clickedSlot()
 {
-    QString filepath = QFileDialog::getOpenFileName(this, tr("选择你的背景"));
+    QString filepath = QFileDialog::getOpenFileName(this, tr("选择你的背景")
+                                                    , settings->value(key_bgpath).toString());
     if (false == filepath.isEmpty())
         settings->setValue(key_bgpath, filepath);
 }

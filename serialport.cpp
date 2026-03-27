@@ -23,8 +23,10 @@ SerialPort::SerialPort(QWidget *parent) :
     font.setPointSize(13);
     font.setLetterSpacing(QFont::AbsoluteSpacing, 1.0);
     ui->terminal_area->document()->setDefaultFont(font);
+    ui->terminal_area->document()->setMaximumBlockCount(10000);
     ui->msg_area->setLineWrapMode(QTextEdit::NoWrap);
     ui->msg_area->setToolTip(tr("消息窗"));
+    ui->msg_area->document()->setMaximumBlockCount(1000);
     ui->port_area->installEventFilter(this);
 
     sche_send_timer = new QTimer(this);
